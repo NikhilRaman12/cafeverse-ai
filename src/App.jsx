@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   SparklesIcon, CoffeeIcon, ClockIcon, CompassIcon, 
   VolumeIcon, UsersIcon, ShoppingBagIcon, CheckCircleIcon, ShieldAlertIcon 
@@ -8,6 +8,14 @@ export const CameraIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
     <circle cx="12" cy="13" r="3"/>
+  </svg>
+);
+
+export const UploadIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
   </svg>
 );
 
@@ -41,10 +49,13 @@ export default function App() {
   const [roomData, setRoomData] = useState([]);
   const [sparksData, setSparksData] = useState([]);
 
-  // Gemini Photo Vibe State
+  // Gemini Photo Vibe State (Image Upload & Camera)
   const [vibeScene, setVibeScene] = useState('Golden hour study desk with laptop and notebooks');
+  const [uploadedImagePreview, setUploadedImagePreview] = useState(null);
+  const [uploadedImageB64, setUploadedImageB64] = useState(null);
   const [vibeResult, setVibeResult] = useState(null);
   const [analyzingVibe, setAnalyzingVibe] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Cloud SQL Experiences State
   const [experiences, setExperiences] = useState([]);
@@ -67,6 +78,19 @@ export default function App() {
     fetchExperiences();
   }, []);
 
+  const handleImageFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUploadedImagePreview(reader.result);
+        setUploadedImageB64(reader.result);
+        setVibeScene(`Uploaded photo: ${file.name}`);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSmartOrder = async (queryText = query, budgetVal = budget) => {
     setIsSubmitting(true);
     try {
@@ -88,13 +112,16 @@ export default function App() {
     }
   };
 
-  const handleVibeAnalyze = async (desc = vibeScene) => {
+  const handleVibeAnalyze = async (desc = vibeScene, b64Img = uploadedImageB64) => {
     setAnalyzingVibe(true);
     try {
       const res = await fetch('/api/vibe/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photo_description: desc })
+        body: JSON.stringify({ 
+          photo_description: desc,
+          photo_b64: b64Img || null
+        })
       });
       const data = await res.json();
       setVibeResult(data);
@@ -209,7 +236,7 @@ export default function App() {
                   fontSize: 11,
                   fontWeight: 800
                 }}>
-                  GEMINI + CLOUD SQL
+                  GEMINI MULTIMODAL VISION
                 </span>
               </div>
               <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
@@ -222,8 +249,8 @@ export default function App() {
           <nav style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', padding: 4, borderRadius: 'var(--radius-full)', flexWrap: 'wrap' }}>
             {[
               { id: 'smartorder', label: '1. SmartOrder', icon: SparklesIcon },
-              { id: 'vibephoto', label: '📸 Photo Vibe', icon: CameraIcon },
-              { id: 'cloudsql', label: '🗄 Cloud SQL Intelligence', icon: DatabaseIcon },
+              { id: 'vibephoto', label: '📸 Multimodal Photo Vibe', icon: CameraIcon },
+              { id: 'cloudsql', label: '🗄 Cloud SQL', icon: DatabaseIcon },
               { id: 'crowding', label: '2. Ghost Crowding', icon: CompassIcon },
               { id: 'waitwise', label: '3. WaitWise™', icon: ClockIcon },
               { id: 'roomsense', label: '4. Acoustic Harmony', icon: VolumeIcon },
@@ -278,25 +305,12 @@ export default function App() {
         </div>
       </header>
 
-      {/* Hero Architecture Tag */}
-      <div style={{ background: '#2C221E', color: '#FAF7F2', padding: '10px 24px', fontSize: 12 }}>
-        <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <span><strong>Enterprise Stack:</strong> Cloud SQL (PostgreSQL/SQLAlchemy) + Gemini 2.5 Flash + Cloud Run</span>
-          <div style={{ display: 'flex', gap: 14 }}>
-            <span>✓ Cloud SQL Logged</span>
-            <span>✓ Root-Cause Intelligence</span>
-            <span>✓ Zero Friction Feedback</span>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <main style={{ maxWidth: 1180, margin: '24px auto', padding: '0 20px', flex: 1, width: '100%' }}>
 
         {/* TAB: SMARTORDER */}
         {activeTab === 'smartorder' && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            
             <div style={{
               background: 'linear-gradient(135deg, #FFF 0%, #FAF7F2 100%)',
               border: '1px solid var(--border-medium)',
@@ -488,11 +502,180 @@ export default function App() {
           </div>
         )}
 
+        {/* TAB: GEMINI MULTIMODAL PHOTO VIBE (WITH LIVE CAMERA & FILE UPLOAD) */}
+        {activeTab === 'vibephoto' && (
+          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #FFF 0%, #FAF7F2 100%)',
+              border: '1px solid var(--border-medium)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 28,
+              boxShadow: 'var(--shadow-md)'
+            }}>
+              <span style={{ color: 'var(--caramel-gold)', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                Gemini Multimodal Vibe Experience
+              </span>
+              <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 700, color: 'var(--text-espresso)', margin: '8px 0' }}>
+                Upload or Snap Your Desk & Vibe
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>
+                Upload your real photo or snapshot. Gemini 2.5 Flash Vision evaluates lighting, aesthetic vibe, companion count, and pairs the exact sensory drink and acoustic zone.
+              </p>
+
+              {/* Photo Upload Dropzone / Button */}
+              <div style={{
+                display: 'flex',
+                gap: 16,
+                flexWrap: 'wrap',
+                marginBottom: 18,
+                alignItems: 'center',
+                padding: 16,
+                border: '2px dashed var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                background: '#FFF'
+              }}>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleImageFileChange}
+                />
+                
+                <button
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  style={{
+                    padding: '12px 20px',
+                    background: 'var(--sage-accent)',
+                    color: '#FFF',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <UploadIcon />
+                  <span>Upload My Photo / Take Picture</span>
+                </button>
+
+                {uploadedImagePreview && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <img
+                      src={uploadedImagePreview}
+                      alt="Uploaded vibe preview"
+                      style={{ width: 64, height: 64, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--caramel-gold)' }}
+                    />
+                    <div style={{ fontSize: 13 }}>
+                      <strong style={{ color: 'var(--sage-accent)' }}>Photo Uploaded!</strong>
+                      <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Ready for Gemini Vision multimodal analysis</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Optional context text description */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
+                <input
+                  type="text"
+                  value={vibeScene}
+                  onChange={(e) => setVibeScene(e.target.value)}
+                  placeholder="Optional note: e.g. MacBook with Figma wireframes, sunny window seat..."
+                  style={{ flex: 1, minWidth: 320, padding: '14px 18px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-medium)', fontSize: 15 }}
+                />
+                <button
+                  onClick={() => handleVibeAnalyze(vibeScene, uploadedImageB64)}
+                  disabled={analyzingVibe}
+                  style={{
+                    padding: '14px 28px',
+                    background: 'linear-gradient(135deg, #C07D3E 0%, #2C221E 100%)',
+                    color: '#FFF',
+                    borderRadius: 'var(--radius-md)',
+                    fontWeight: 700,
+                    fontSize: 15,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                  }}
+                >
+                  <CameraIcon />
+                  {analyzingVibe ? 'Gemini Vision Evaluating Photo...' : 'Analyze Vibe & Pair'}
+                </button>
+              </div>
+
+              {/* Sample Photo Presets */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-subtle)', alignSelf: 'center' }}>Or choose sample:</span>
+                {[
+                  'MacBook with Figma wireframes, sunny sunlight, ceramic cup',
+                  'Rainy window glass with paperback book and chunky wool knit',
+                  'Two friends sketching a startup architecture on napkin'
+                ].map((s, i) => (
+                  <button key={i} onClick={() => { setVibeScene(s); setUploadedImagePreview(null); setUploadedImageB64(null); handleVibeAnalyze(s, null); }} style={{
+                    background: 'var(--bg-card)', padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: 12, border: '1px solid var(--border-light)'
+                  }}>
+                    📸 "{s}"
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Vibe Analysis Card */}
+            {vibeResult && (
+              <div className="animate-fade-in" style={{
+                background: 'var(--bg-surface)',
+                borderRadius: 'var(--radius-lg)',
+                padding: 24,
+                border: '1.5px solid var(--caramel-gold)',
+                boxShadow: 'var(--shadow-md)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <span style={{ background: 'var(--caramel-light)', color: 'var(--caramel-gold)', padding: '3px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 800 }}>
+                      {vibeResult.source}
+                    </span>
+                    <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 24, fontWeight: 700, marginTop: 6 }}>
+                      {vibeResult.aesthetic_vibe}
+                    </h3>
+                  </div>
+                  <div style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: 13 }}>
+                    "{vibeResult.atmosphere_curation_quote}"
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 18 }}>
+                  <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--caramel-gold)' }}>MATCHED SENSORY PAIRING</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, margin: '4px 0' }}>{vibeResult.matched_drink} (₹{vibeResult.drink_price})</div>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{vibeResult.sensory_rationale}</p>
+                    <button
+                      onClick={() => {
+                        const item = menuItems.find(m => m.id === vibeResult.matched_drink_id);
+                        if (item) addToCart(item);
+                      }}
+                      style={{ marginTop: 10, background: 'var(--sage-accent)', color: '#FFF', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 700 }}
+                    >
+                      + Add this Vibe Pairing to Cart
+                    </button>
+                  </div>
+
+                  <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage-accent)' }}>ATMOSPHERE ZONE</div>
+                    <div style={{ fontSize: 18, fontWeight: 800, margin: '4px 0' }}>{vibeResult.suggested_zone}</div>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                      Optimal acoustic isolation, natural lighting, and electrical outlet placement for your session.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB: CLOUD SQL EXPERIENCE INTELLIGENCE */}
         {activeTab === 'cloudsql' && (
           <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            
-            {/* Submit Experience Form */}
             <div style={{
               background: 'linear-gradient(135deg, #FFF 0%, #FAF7F2 100%)',
               border: '1px solid var(--border-medium)',
@@ -570,7 +753,6 @@ export default function App() {
                   {submittingFeedback ? 'Analyzing with Gemini & Saving...' : 'Store Experience & Analyze'}
                 </button>
 
-                {/* Sample quick fills */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <button onClick={() => { setFeedbackText('Blender noise in the mezzanine was deafening during my work call.'); setFeedbackRating(2); }} style={{ fontSize: 11, background: 'var(--bg-card)', padding: '4px 10px', borderRadius: 'var(--radius-full)' }}>
                     Sample: Acoustic Issue
@@ -581,7 +763,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Feedback Success Flash */}
               {feedbackSuccess && (
                 <div style={{ marginTop: 16, padding: 14, background: 'var(--sage-light)', borderRadius: 'var(--radius-md)', border: '1px solid var(--sage-accent)' }}>
                   <strong style={{ color: 'var(--sage-accent)' }}>✓ Gemini Root Cause Extracted:</strong> {feedbackSuccess.root_cause}
@@ -648,120 +829,6 @@ export default function App() {
               </div>
             </div>
 
-          </div>
-        )}
-
-        {/* TAB: GEMINI PHOTO VIBE */}
-        {activeTab === 'vibephoto' && (
-          <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-            <div style={{
-              background: 'linear-gradient(135deg, #FFF 0%, #FAF7F2 100%)',
-              border: '1px solid var(--border-medium)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 28,
-              boxShadow: 'var(--shadow-md)'
-            }}>
-              <span style={{ color: 'var(--caramel-gold)', fontWeight: 800, fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Gemini Multimodal Vibe Experience
-              </span>
-              <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 28, fontWeight: 700, color: 'var(--text-espresso)', margin: '8px 0' }}>
-                Snap Your Desk, Mood, or Scene
-              </h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 18 }}>
-                Gemini Vision analyzes the aesthetics of your workspace, lighting, and company, and crafts the exact sensory pairing and atmosphere.
-              </p>
-
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16 }}>
-                <input
-                  type="text"
-                  value={vibeScene}
-                  onChange={(e) => setVibeScene(e.target.value)}
-                  placeholder="Describe your scene or photo snapshot..."
-                  style={{ flex: 1, minWidth: 320, padding: '14px 18px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-medium)', fontSize: 15 }}
-                />
-                <button
-                  onClick={() => handleVibeAnalyze(vibeScene)}
-                  disabled={analyzingVibe}
-                  style={{
-                    padding: '14px 28px',
-                    background: 'linear-gradient(135deg, #C07D3E 0%, #2C221E 100%)',
-                    color: '#FFF',
-                    borderRadius: 'var(--radius-md)',
-                    fontWeight: 700,
-                    fontSize: 15,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8
-                  }}
-                >
-                  <CameraIcon />
-                  {analyzingVibe ? 'Analyzing Scene with Gemini...' : 'Analyze Vibe & Pair'}
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[
-                  'MacBook with Figma wireframes, sunny sunlight, ceramic cup',
-                  'Rainy window glass with paperback book and chunky wool knit',
-                  'Two friends sketching a startup architecture on napkin'
-                ].map((s, i) => (
-                  <button key={i} onClick={() => { setVibeScene(s); handleVibeAnalyze(s); }} style={{
-                    background: 'var(--bg-card)', padding: '6px 14px', borderRadius: 'var(--radius-full)', fontSize: 12, border: '1px solid var(--border-light)'
-                  }}>
-                    📸 "{s}"
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {vibeResult && (
-              <div className="animate-fade-in" style={{
-                background: 'var(--bg-surface)',
-                borderRadius: 'var(--radius-lg)',
-                padding: 24,
-                border: '1.5px solid var(--caramel-gold)',
-                boxShadow: 'var(--shadow-md)'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                  <div>
-                    <span style={{ background: 'var(--caramel-light)', color: 'var(--caramel-gold)', padding: '3px 10px', borderRadius: 'var(--radius-full)', fontSize: 11, fontWeight: 800 }}>
-                      {vibeResult.source}
-                    </span>
-                    <h3 style={{ fontFamily: 'var(--font-serif)', fontSize: 24, fontWeight: 700, marginTop: 6 }}>
-                      {vibeResult.aesthetic_vibe}
-                    </h3>
-                  </div>
-                  <div style={{ fontStyle: 'italic', color: 'var(--text-muted)', fontSize: 13 }}>
-                    "{vibeResult.atmosphere_curation_quote}"
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginTop: 18 }}>
-                  <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--caramel-gold)' }}>MATCHED SENSORY PAIRING</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, margin: '4px 0' }}>{vibeResult.matched_drink} (₹{vibeResult.drink_price})</div>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{vibeResult.sensory_rationale}</p>
-                    <button
-                      onClick={() => {
-                        const item = menuItems.find(m => m.id === vibeResult.matched_drink_id);
-                        if (item) addToCart(item);
-                      }}
-                      style={{ marginTop: 10, background: 'var(--sage-accent)', color: '#FFF', padding: '8px 14px', borderRadius: 'var(--radius-sm)', fontSize: 12, fontWeight: 700 }}
-                    >
-                      + Add this Vibe Pairing to Cart
-                    </button>
-                  </div>
-
-                  <div style={{ background: 'var(--bg-card)', padding: 18, borderRadius: 'var(--radius-md)' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--sage-accent)' }}>ATMOSPHERE ZONE</div>
-                    <div style={{ fontSize: 18, fontWeight: 800, margin: '4px 0' }}>{vibeResult.suggested_zone}</div>
-                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                      Optimal acoustic isolation, natural lighting, and electrical outlet placement for your session.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
@@ -873,7 +940,7 @@ export default function App() {
 
       {/* Footer */}
       <footer style={{ background: 'var(--bg-surface)', borderTop: '1px solid var(--border-light)', padding: '18px 24px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)', marginTop: 40 }}>
-        <strong>CaféVerse</strong> • Powered by Google Gemini + Cloud SQL + Cloud Run | Built for Google Cloud Builder Pop-Up
+        <strong>CaféVerse</strong> • Powered by Google Gemini 2.5 Flash + Cloud SQL + Cloud Run | Built for Google Cloud Builder Pop-Up
       </footer>
 
     </div>
