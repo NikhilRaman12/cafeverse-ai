@@ -9,8 +9,8 @@ RUN npm run build
 FROM python:3.11-slim
 WORKDIR /app
 
-# Install dependencies
-RUN pip install --no-cache-dir fastapi uvicorn pydantic requests google-genai
+# Install all backend dependencies including sqlalchemy
+RUN pip install --no-cache-dir fastapi uvicorn pydantic requests google-genai sqlalchemy
 
 # Copy backend
 COPY server/ ./server/
